@@ -88,12 +88,14 @@ export default function ChatPanel({ project, setProject, projectId, onSave }: Ch
         };
 
         console.log(`Applied ${changesApplied} file change(s)`, fileChanges);
-        
+
         // Auto-save if projectId exists
         if (projectId && onSave) {
-          autoSave(projectId, updated.frontendFiles, updated.backendFiles);
+          setTimeout(() => {
+            autoSave(projectId, updated.frontendFiles, updated.backendFiles);
+          }, 0);
         }
-        
+
         return updated;
       });
 
@@ -111,7 +113,7 @@ export default function ChatPanel({ project, setProject, projectId, onSave }: Ch
 
   const autoSave = async (id: string, frontendFiles: Record<string, string>, backendFiles: Record<string, string>) => {
     if (!onSave) return;
-    
+
     setSaving(true);
     try {
       await onSave(id, frontendFiles, backendFiles);

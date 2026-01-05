@@ -9,7 +9,7 @@ export default async function AdminDashboard() {
     redirect("/login");
   }
 
-  if (session.user.role !== "admin") {
+  if ((session.user as any).role !== "admin") {
     redirect("/dashboard");
   }
 
