@@ -1,7 +1,7 @@
 // app/builder/page.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -12,7 +12,7 @@ import { ProjectState } from "@/types/project";
 import LogoutButton from "@/components/builder/LogoutButton";
 import { LayoutDashboard, User as UserIcon } from "lucide-react";
 
-export default function BuilderPage() {
+function BuilderContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -152,9 +152,8 @@ export default function BuilderPage() {
               <button
                 key={view}
                 onClick={() => setActiveView(view)}
-                className={`px-2 sm:px-3 md:px-5 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all flex-shrink-0 ${
-                  activeView === view ? "bg-purple-600/60 text-white shadow-md" : "text-gray-400 hover:bg-white/10"
-                }`}
+                className={`px-2 sm:px-3 md:px-5 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-all flex-shrink-0 ${activeView === view ? "bg-purple-600/60 text-white shadow-md" : "text-gray-400 hover:bg-white/10"
+                  }`}
               >
                 <span className="hidden sm:inline">{view.charAt(0).toUpperCase() + view.slice(1)}</span>
                 <span className="sm:hidden">{view.charAt(0).toUpperCase()}</span>
@@ -190,9 +189,9 @@ export default function BuilderPage() {
       <main className="flex flex-1 pt-14 overflow-hidden">
         {/* Left Sidebar: Agent/Chat */}
         <div className="w-[380px] border-r border-white/10 bg-black/60 backdrop-blur-md overflow-y-auto">
-          <ChatPanel 
-            project={project} 
-            setProject={setProject} 
+          <ChatPanel
+            project={project}
+            setProject={setProject}
             projectId={projectId || undefined}
             onSave={saveProject}
           />
@@ -253,5 +252,20 @@ export default function BuilderPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function BuilderPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-screen bg-black text-white">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-zinc-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <BuilderContent />
+    </Suspense>
   );
 }
