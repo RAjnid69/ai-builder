@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Editor from "@monaco-editor/react";
-import FileTree from "./FileTree"; // ← new import
+import FileTree from "./FileTree";
 import { ProjectState } from "@/types/project";
 
 interface CodeEditorProps {
@@ -12,29 +12,28 @@ interface CodeEditorProps {
 }
 
 export default function CodeEditor({ project, onFileChange, onActiveFileChange }: CodeEditorProps) {
-  const frontendFiles = project.frontendFiles || {};
-  const filePaths = Object.keys(frontendFiles);
+  const frontendFiles = useMemo(() => project.frontendFiles || {}, [project.frontendFiles]);
+  const filePaths = useMemo(() => Object.keys(frontendFiles), [frontendFiles]);
 
-  const [activeFile, setActiveFile] = useState<string | null>(project.activeFile || filePaths[0] || null);
+  const [activeFile, setActiveFile] = useState<string | null>(null);
   const [currentContent, setCurrentContent] = useState("");
   const [isDirty, setIsDirty] = useState(false);
 
-  // Sync active file from parent when it changes
+  // Sync state with props ONLY when project.activeFile or files change significantly
   useEffect(() => {
-    setActiveFile(project.activeFile || filePaths[0] || null);
-  }, [project.activeFile]);
+    // Determine what the active file should be
+    const nextActiveFile = project.activeFile || filePaths[0] || null;
 
-  // Sync content when active file changes
-  useEffect(() => {
-    if (!activeFile || !frontendFiles[activeFile]) {
-      setCurrentContent("");
+    // Only update if it's different from current state (to avoid cascades)
+    if (nextActiveFile !== activeFile) {
+      setActiveFile(nextActiveFile);
+      setCurrentContent(nextActiveFile ? frontendFiles[nextActiveFile] || "" : "");
       setIsDirty(false);
-      return;
+    } else if (nextActiveFile && !isDirty && currentContent !== frontendFiles[nextActiveFile]) {
+      // Content changed from outside but we aren't dirty, so sync it
+      setCurrentContent(frontendFiles[nextActiveFile] || "");
     }
-
-    setCurrentContent(frontendFiles[activeFile]);
-    setIsDirty(false);
-  }, [activeFile, frontendFiles]);
+  }, [project.activeFile, filePaths, frontendFiles, activeFile, currentContent, isDirty]);
 
   const handleEditorChange = (value: string | undefined) => {
     if (value === undefined || !activeFile) return;
@@ -46,6 +45,8 @@ export default function CodeEditor({ project, onFileChange, onActiveFileChange }
 
   const handleFileSelect = (path: string) => {
     setActiveFile(path);
+    setCurrentContent(frontendFiles[path] || "");
+    setIsDirty(false);
     onActiveFileChange(path);
   };
 

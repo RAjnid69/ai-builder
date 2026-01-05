@@ -19,7 +19,10 @@ export class User {
   @Column({ default: "user" })
   role!: string;
 
-  @OneToMany(() => Project, (project) => project.user)
+  @Column({ nullable: true })
+  password?: string;
+
+  @OneToMany("Project", (project: Project) => project.user)
   projects!: Project[];
 
   @CreateDateColumn()

@@ -2,25 +2,29 @@
 
 import { useState } from "react";
 import { parseAgentResponse } from "@/lib/agent/parseAgent";
+import { Save } from "lucide-react";
 
 interface Project {
   frontendFiles: Record<string, string>;
   backendFiles: Record<string, string>;
-  [key: string]: any;
+  activeFile: string | null;
+  side: "frontend" | "backend";
 }
 
 interface ChatPanelProps {
   project: Project;
-  setProject: React.Dispatch<React.SetStateAction<Project>>; // Required - no more ?
+  setProject: React.Dispatch<React.SetStateAction<Project>>;
+  projectId?: string;
+  onSave?: (id: string, frontendFiles: Record<string, string>, backendFiles: Record<string, string>) => Promise<void>;
 }
 
-export default function ChatPanel({ project, setProject }: ChatPanelProps) {
+export default function ChatPanel({ project, setProject, projectId, onSave }: ChatPanelProps) {
   // Safety guard
   const safeSetProject = (updater: (prev: Project) => Project) => {
     if (typeof setProject !== "function") {
       console.error(
         "❌ setProject is missing or not a function!\n" +
-          "Parent must pass: <ChatPanel project={project} setProject={setProject} />"
+        "Parent must pass: <ChatPanel project={project} setProject={setProject} />"
       );
       if (process.env.NODE_ENV === "development") {
         throw new Error("setProject prop is required");
@@ -33,6 +37,8 @@ export default function ChatPanel({ project, setProject }: ChatPanelProps) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   const applyAgentActions = (raw: string) => {
     const parsed = parseAgentResponse(raw);
@@ -48,7 +54,7 @@ export default function ChatPanel({ project, setProject }: ChatPanelProps) {
 
     // Case 1: actions array (preferred)
     if (Array.isArray(parsed.actions)) {
-      parsed.actions.forEach((action: any) => {
+      parsed.actions.forEach((action: { file?: string; content?: string }) => {
         if (!action?.file || typeof action.content !== "string") return;
         fileChanges[action.file] = action.content;
         changesApplied++;
@@ -82,6 +88,12 @@ export default function ChatPanel({ project, setProject }: ChatPanelProps) {
         };
 
         console.log(`Applied ${changesApplied} file change(s)`, fileChanges);
+        
+        // Auto-save if projectId exists
+        if (projectId && onSave) {
+          autoSave(projectId, updated.frontendFiles, updated.backendFiles);
+        }
+        
         return updated;
       });
 
@@ -94,6 +106,25 @@ export default function ChatPanel({ project, setProject }: ChatPanelProps) {
         ...prev,
         "Agent: No valid file changes found in the response 🤔",
       ]);
+    }
+  };
+
+  const autoSave = async (id: string, frontendFiles: Record<string, string>, backendFiles: Record<string, string>) => {
+    if (!onSave) return;
+    
+    setSaving(true);
+    try {
+      await onSave(id, frontendFiles, backendFiles);
+      setLastSaved(new Date());
+      console.log("✅ Project auto-saved successfully");
+    } catch (error) {
+      console.error("❌ Error auto-saving project:", error);
+      setMessages((prev) => [
+        ...prev,
+        "⚠️ Warning: Changes were applied but could not be saved to database.",
+      ]);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -124,9 +155,13 @@ export default function ChatPanel({ project, setProject }: ChatPanelProps) {
       }
 
       applyAgentActions(data.raw);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Agent request failed:", err);
-      setMessages((prev) => [...prev, `Error: ${err.message || "Something went wrong"}`]);
+      const errorMessage = err instanceof Error ? err.message : "Something went wrong";
+      setMessages((prev) => [
+        ...prev,
+        `❌ Error: ${errorMessage}\n\nThis usually happens if the AI model fails to generate valid code or if Ollama is not responding.`
+      ]);
     } finally {
       setLoading(false);
     }
@@ -134,6 +169,35 @@ export default function ChatPanel({ project, setProject }: ChatPanelProps) {
 
   return (
     <div className="flex h-full flex-col p-4 bg-gradient-to-b from-gray-950 to-black text-white">
+      {/* Save Status Indicator */}
+      {projectId && (
+        <div className="mb-3 px-3 py-2 rounded-lg bg-gray-900/50 border border-gray-800 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            {saving ? (
+              <>
+                <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-blue-400">Saving...</span>
+              </>
+            ) : lastSaved ? (
+              <>
+                <Save className="w-3 h-3 text-green-400" />
+                <span className="text-green-400">
+                  Saved {lastSaved.toLocaleTimeString()}
+                </span>
+              </>
+            ) : (
+              <>
+                <Save className="w-3 h-3 text-gray-500" />
+                <span className="text-gray-500">Not saved</span>
+              </>
+            )}
+          </div>
+          {projectId && (
+            <span className="text-gray-600 text-[10px]">Project ID: {projectId.slice(0, 8)}...</span>
+          )}
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto space-y-4 pb-4 scrollbar-thin scrollbar-thumb-gray-700">
         {messages.length === 0 && (
           <div className="text-center text-gray-500 mt-10">
@@ -144,9 +208,8 @@ export default function ChatPanel({ project, setProject }: ChatPanelProps) {
         {messages.map((msg, i) => (
           <div
             key={i}
-            className={`whitespace-pre-wrap p-3 rounded-lg max-w-[85%] ${
-              msg.startsWith("You:") ? "bg-blue-900/40 ml-auto" : "bg-gray-800/60 mr-auto"
-            }`}
+            className={`whitespace-pre-wrap p-3 rounded-lg max-w-[85%] ${msg.startsWith("You:") ? "bg-blue-900/40 ml-auto" : "bg-gray-800/60 mr-auto"
+              }`}
           >
             {msg}
           </div>

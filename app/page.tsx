@@ -11,8 +11,29 @@ import Link from "next/link";
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-black text-white">
+      {/* Navigation Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 h-16 bg-black/50 backdrop-blur-lg border-b border-white/5 px-6">
+        <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center font-bold text-black">B</div>
+            <span className="font-bold tracking-tight">AI Builder</span>
+          </div>
+
+          <div className="flex items-center gap-6">
+            <Link href="/login" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors">
+              Login
+            </Link>
+            <Link href="/signup">
+              <Button size="sm" className="rounded-xl bg-white text-black hover:bg-zinc-200">
+                Sign Up
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </header>
+
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden pt-16">
         <div className="max-w-7xl mx-auto px-6 py-32 text-center">
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
@@ -26,10 +47,12 @@ export default function LandingPage() {
             Create websites and applications effortlessly using intelligent AI agents with live previews and real-time updates.
           </p>
           <div className="mt-10 flex justify-center gap-4">
-            <Button size="lg" className="rounded-2xl bg-emerald-500 hover:bg-emerald-600">
-              Get Started
-            </Button>
-            <Button size="lg" variant="outline" className="rounded-2xl">
+            <Link href="/signup">
+              <Button size="lg" className="rounded-2xl bg-emerald-500 hover:bg-emerald-600">
+                Get Started
+              </Button>
+            </Link>
+            <Button size="lg" variant="outline" className="rounded-2xl border-zinc-800 hover:bg-zinc-900">
               View Demo
             </Button>
           </div>
@@ -85,7 +108,7 @@ export default function LandingPage() {
             Launch Your Project <Rocket className="ml-2 w-5 h-5" />
           </Button>
           </Link>
-          
+
         </motion.div>
       </section>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 interface PreviewPanelProps {
   project: {
@@ -10,7 +10,6 @@ interface PreviewPanelProps {
 
 export default function PreviewPanel({ project }: PreviewPanelProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [status, setStatus] = useState("Loading preview...");
 
   useEffect(() => {
     const iframe = iframeRef.current;
@@ -25,7 +24,6 @@ export default function PreviewPanel({ project }: PreviewPanelProps) {
     const tsxFiles = Object.keys(files).filter((path) => /\.(tsx|jsx)$/.test(path));
 
     if (tsxFiles.length === 0) {
-      setStatus("No .tsx/.jsx files found");
       doc.open();
       doc.write(`
         <!DOCTYPE html>
@@ -45,8 +43,6 @@ export default function PreviewPanel({ project }: PreviewPanelProps) {
     // Prefer app/page.tsx if present
     const entryPath = tsxFiles.find(p => p.includes("page.tsx")) || tsxFiles[0];
     const entryCode = files[entryPath] || "";
-
-    setStatus("Transpiling code...");
 
     doc.open();
     doc.write(`

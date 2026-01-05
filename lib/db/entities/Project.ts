@@ -24,8 +24,8 @@ export class Project {
 
   @Column("simple-json")
   backendFiles!: Record<string, string>;
-  
-  @ManyToOne(() => User, (user) => user.projects, {
+
+  @ManyToOne("User", (user: User) => user.projects, {
     onDelete: "CASCADE",
   })
   user!: User;

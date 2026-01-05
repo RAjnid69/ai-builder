@@ -1,5 +1,5 @@
 // ...existing code...
-export default function Page(props: { params?: any }) {
+export default function Page() {
   return (
     <>
       {/* existing JSX goes here */}

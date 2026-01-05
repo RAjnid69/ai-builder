@@ -19,7 +19,7 @@ async function callOllama(fullPrompt: string, stream = false): Promise<string | 
   const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 minutes
 
   const payload: OllamaPayload = {
-    model: "qwen2.5-coder:3b-instruct-q6_K",
+    model: process.env.NEXT_PUBLIC_OLLAMA_MODEL || "codellama:latest",
     prompt: fullPrompt,
     stream,
     format: "json",
@@ -60,9 +60,9 @@ async function callOllama(fullPrompt: string, stream = false): Promise<string | 
     }
 
     return res.body!;
-  } catch (err: any) {
+  } catch (err: unknown) {
     clearTimeout(timeoutId);
-    if (err.name === "AbortError") {
+    if (err instanceof Error && err.name === "AbortError") {
       throw new Error("Request timed out after 5 minutes");
     }
     throw err;
@@ -80,58 +80,42 @@ export async function POST(req: NextRequest) {
 
     // ── STRICTEST SYSTEM PROMPT ──
     const systemPrompt = `
-You are a perfectionist Next.js expert who writes **clean, valid, error-free, production-ready code** that always compiles and runs.
+You are a highly specialized AI assistant that exports Next.js projects as JSON.
+Your task: Convert the user's request into a set of files.
 
-CRITICAL RULES - VIOLATE ANY AND THE OUTPUT IS INVALID:
-
-- Output **ONLY valid JSON** — no text, no markdown, no fences, no prose, no comments outside JSON.
-- Generate **perfectly valid TypeScript/TSX code** — no syntax errors, no typos, no garbage characters (no ~~~~~, ^, repeated ; or }).
-- ALWAYS use proper JSX syntax: correct tags, balanced, no invalid nesting.
-- ALWAYS include full structure:
-  - "app/layout.tsx" — root layout with metadata, Tailwind, <html lang="en" className="dark"><body>{children}</body></html>
-  - "app/page.tsx" — main page rendering the feature (import and use components)
-  - Components in "components/" with proper 'use client' when needed
-- Use **Tailwind CSS** only (dark mode default, responsive classes)
-- Use **TypeScript** everywhere (proper types, no any)
-- Clean code: no console.logs, proper imports, functional components, no duplication
-- NEVER generate plain HTML/JS — all React/Next.js
-- Code must be 100% error-free, identical to professional production code
-
-Return ONLY this JSON format:
-
+OUTPUT REQUIREMENTS:
+- RETURN ONLY A JSON OBJECT. NO PROSE. NO CHAT. NO EXPLANATIONS.
+- The JSON must follow this exact schema:
 {
   "files": {
-    "app/layout.tsx": "full valid code",
-    "app/page.tsx": "full valid code",
-    "components/TodoList.tsx": "full valid component",
-    // add other files
-  },
-  "message": "optional short note"
+    "app/layout.tsx": "code...",
+    "app/page.tsx": "code...",
+    "components/MyComponent.tsx": "code..."
+  }
 }
+- All code must be TypeScript/TSX.
+- Use Tailwind CSS for styling.
+- Ensure all components are export default.
+- Use 'use client' for components with hooks.
 
-Examples of INVALID code (NEVER generate this):
-- Missing semicolons, unbalanced braces, typos like "Hellloworld"
-- Garbage like ~~~~~, ^, repeated }; or ;
-- Invalid JSX: <div><h1>Hello</div>
-- Plain HTML without React
-- JSX outside return: <div>Hello</div> (not inside function)
-- Missing "use client" when using useState/onClick
-- Missing import React hooks
-- JSX without component wrapper: <div>Hello</div> (must be inside return)
-
+FAILURE TO RETURN VALID JSON WILL CAUSE SYSTEM ERROR.
 User request: ${prompt}
 
-Current project files (reference only - modify or add to them):
+Current project files (reference):
 ${JSON.stringify(project?.frontendFiles || {}, null, 2)}
 `;
 
     if (!stream) {
+      console.log("🤖 Requesting non-streamed response from Ollama...");
       const raw = await callOllama(systemPrompt, false);
+      console.log("🤖 Raw response length:", (raw as string).length);
+      console.log("🤖 Raw response preview:", (raw as string).slice(0, 500));
 
       try {
         JSON.parse(raw as string);
+        console.log("✅ Valid JSON received from Ollama");
       } catch {
-        console.warn("Invalid JSON from Ollama:", (raw as string).slice(0, 200));
+        console.warn("⚠️ Invalid JSON from Ollama. Attempting to fix in parser...");
       }
 
       return NextResponse.json({ success: true, raw });
@@ -150,10 +134,10 @@ ${JSON.stringify(project?.frontendFiles || {}, null, 2)}
         "Access-Control-Allow-Origin": "*",
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Agent API error:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Internal error" },
+      { success: false, error: error instanceof Error ? error.message : "Internal error" },
       { status: 500 }
     );
   }
