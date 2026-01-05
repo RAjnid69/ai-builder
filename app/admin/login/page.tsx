@@ -4,13 +4,6 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Shield } from "lucide-react";
-import { z } from "zod";
-
-// Zod schema for validation
-const adminLoginSchema = z.object({
-  email: z.string().email("Enter a valid email"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
@@ -24,10 +17,14 @@ export default function AdminLoginPage() {
     setError("");
     setLoading(true);
 
-    // Frontend validation using Zod
-    const validation = adminLoginSchema.safeParse({ email, password });
-    if (!validation.success) {
-      setError(validation.error.errors[0].message);
+    // Frontend validation (Manual)
+    if (!email || !email.includes("@")) {
+      setError("Enter a valid email");
+      setLoading(false);
+      return;
+    }
+    if (!password || password.length < 8) {
+      setError("Password must be at least 8 characters");
       setLoading(false);
       return;
     }
@@ -111,7 +108,7 @@ export default function AdminLoginPage() {
           </button>
         </form>
 
-    
+
       </div>
     </div>
   );

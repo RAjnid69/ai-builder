@@ -7,12 +7,16 @@ import PreviewPanel from "./PreviewPanel";
 export interface ProjectState {
   frontendFiles: Record<string, string>;
   backendFiles: Record<string, string>;
+  activeFile: string | null;
+  side: "frontend" | "backend";
 }
 
 export default function BuilderLayout() {
   const [project, setProject] = useState<ProjectState>({
     frontendFiles: {},
     backendFiles: {},
+    activeFile: null,
+    side: "frontend",
   });
 
   return (

@@ -4,12 +4,10 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Button } from "@/components/ui/Button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
   Plus,
   Folder,
-  Calendar,
+  Clock,
   LogOut,
   Code2,
   Trash2,
@@ -19,17 +17,19 @@ import {
   Check,
   Loader2,
   TrendingUp,
-  Clock,
-  Play,
-  Sparkles,
   FileCode,
   Zap,
   ArrowRight,
   Grid3x3,
   List,
-  Settings,
+  Sparkles,
   User as UserIcon,
+  MoreVertical,
+  Terminal,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 interface Project {
   id: string;
@@ -53,6 +53,28 @@ interface DashboardClientProps {
 
 type SortOption = "newest" | "oldest" | "name-asc" | "name-desc";
 type ViewMode = "grid" | "list";
+
+// --- Deterministic Gradient Helper ---
+const getProjectGradient = (id: string, name: string) => {
+  const gradients = [
+    "from-pink-500/20 to-rose-500/20 border-pink-500/20 text-pink-400",
+    "from-purple-500/20 to-indigo-500/20 border-purple-500/20 text-purple-400",
+    "from-blue-500/20 to-cyan-500/20 border-blue-500/20 text-blue-400",
+    "from-emerald-500/20 to-teal-500/20 border-emerald-500/20 text-emerald-400",
+    "from-orange-500/20 to-amber-500/20 border-orange-500/20 text-orange-400",
+    "from-indigo-500/20 to-violet-500/20 border-indigo-500/20 text-indigo-400",
+  ];
+
+  // Simple hash function
+  let hash = 0;
+  const str = id + name;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  const index = Math.abs(hash) % gradients.length;
+  return gradients[index];
+};
 
 export default function DashboardClient({ user }: DashboardClientProps) {
   const router = useRouter();
@@ -108,14 +130,12 @@ export default function DashboardClient({ user }: DashboardClientProps) {
   const filteredAndSortedProjects = useMemo(() => {
     let filtered = projects;
 
-    // Search filter
     if (searchQuery.trim()) {
       filtered = filtered.filter((project) =>
         project.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
-    // Sort
     const sorted = [...filtered].sort((a, b) => {
       switch (sortBy) {
         case "newest":
@@ -238,12 +258,9 @@ export default function DashboardClient({ user }: DashboardClientProps) {
     if (diffDays === 0) return "Today";
     if (diffDays === 1) return "Yesterday";
     if (diffDays < 7) return `${diffDays} days ago`;
-    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
-
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-      year: date.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
     });
   };
 
@@ -267,83 +284,62 @@ export default function DashboardClient({ user }: DashboardClientProps) {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
+      transition: { staggerChildren: 0.1 },
     },
   };
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.3,
-      },
-    },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } },
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-zinc-950 to-black text-white">
-      {/* Toast Notification */}
+    <div className="min-h-screen bg-[#0A0A0A] text-white selection:bg-emerald-500/30 selection:text-emerald-400 font-sans">
+      {/* Background Pattern */}
+      <div className="fixed inset-0 z-0 opacity-20 pointer-events-none"
+        style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #333 1px, transparent 0)', backgroundSize: '24px 24px' }}
+      />
+
+      {/* Toast */}
       <AnimatePresence>
         {toast && (
           <motion.div
             initial={{ opacity: 0, y: -50, x: "-50%" }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -50 }}
-            className="fixed top-20 left-1/2 z-50 -translate-x-1/2"
+            className="fixed top-6 left-1/2 z-50 -translate-x-1/2"
           >
-            <div
-              className={`px-6 py-3 rounded-xl shadow-2xl backdrop-blur-md border ${
-                toast.type === "success"
-                  ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-400"
-                  : "bg-red-500/20 border-red-500/50 text-red-400"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                {toast.type === "success" ? (
-                  <Check className="w-5 h-5" />
-                ) : (
-                  <X className="w-5 h-5" />
-                )}
-                <span className="font-medium">{toast.message}</span>
-              </div>
+            <div className={cn(
+              "px-4 py-2 rounded-full shadow-2xl backdrop-blur-xl border flex items-center gap-2",
+              toast.type === "success"
+                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                : "bg-red-500/10 border-red-500/20 text-red-400"
+            )}>
+              {toast.type === "success" ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+              <span className="text-sm font-medium">{toast.message}</span>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-40 h-16 bg-black/40 backdrop-blur-xl border-b border-white/5 px-4 sm:px-6 shadow-lg">
-        <div className="max-w-7xl mx-auto h-full flex items-center justify-between">
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-3"
-          >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center font-bold text-white shadow-lg shadow-emerald-500/30">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="font-bold text-lg tracking-tight">AI Builder</span>
-              <p className="text-xs text-zinc-500 hidden sm:block">Dashboard</p>
-            </div>
-          </motion.div>
+      <header className="sticky top-0 z-40 bg-[#0A0A0A]/80 backdrop-blur-xl border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-black font-bold">B</div>
+            <span className="font-semibold text-lg hidden sm:block">AI Builder</span>
+          </div>
 
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900/50 border border-zinc-800">
-              <UserIcon className="w-4 h-4 text-zinc-400" />
-              <span className="text-sm text-zinc-300 truncate max-w-[150px]">
-                {user.email}
-              </span>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/5 text-xs text-zinc-400">
+              <UserIcon className="w-3.5 h-3.5" />
+              {user.email}
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="text-zinc-400 hover:text-white hover:bg-zinc-900/50"
+              className="text-zinc-400 hover:text-white hover:bg-white/5"
             >
               <LogOut className="w-4 h-4 sm:mr-2" />
               <span className="hidden sm:inline">Logout</span>
@@ -352,524 +348,245 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="pt-24 sm:pt-28 pb-12 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Welcome Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mb-8 sm:mb-12"
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        {/* Hero Section */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2">My Projects</h1>
+            <p className="text-zinc-400">Manage and deploy your AI-generated applications.</p>
+          </div>
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="rounded-full bg-emerald-500 hover:bg-emerald-600 text-black font-medium px-6 shadow-lg shadow-emerald-500/20 transition-all hover:scale-105"
           >
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-white via-zinc-200 to-zinc-400 bg-clip-text text-transparent">
-              Welcome back!
-            </h1>
-            <p className="text-base sm:text-lg text-zinc-400 max-w-2xl">
-              Build amazing applications with AI. Create, manage, and deploy your projects effortlessly.
-            </p>
-          </motion.div>
+            <Plus className="w-5 h-5 mr-2" />
+            New Project
+          </Button>
+        </div>
 
-          {/* Stats Cards */}
-          {!loading && projects.length > 0 && (
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10"
-            >
-              <motion.div variants={itemVariants}>
-                <Card className="border-zinc-800 bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 backdrop-blur-sm hover:border-emerald-500/30 transition-all duration-300">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-zinc-400 mb-2">Total Projects</p>
-                        <p className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
-                          {stats.totalProjects}
-                        </p>
-                      </div>
-                      <div className="w-14 h-14 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-                        <Folder className="w-7 h-7 text-emerald-400" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              <motion.div variants={itemVariants}>
-                <Card className="border-zinc-800 bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 backdrop-blur-sm hover:border-blue-500/30 transition-all duration-300">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-zinc-400 mb-2">Total Files</p>
-                        <p className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
-                          {stats.totalFiles}
-                        </p>
-                      </div>
-                      <div className="w-14 h-14 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                        <FileCode className="w-7 h-7 text-blue-400" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-
-              <motion.div variants={itemVariants}>
-                <Card className="border-zinc-800 bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 backdrop-blur-sm hover:border-purple-500/30 transition-all duration-300">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-zinc-400 mb-2">Updated This Week</p>
-                        <p className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white to-zinc-400 bg-clip-text text-transparent">
-                          {stats.recentProjects}
-                        </p>
-                      </div>
-                      <div className="w-14 h-14 rounded-xl bg-purple-500/10 flex items-center justify-center">
-                        <TrendingUp className="w-7 h-7 text-purple-400" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </motion.div>
-          )}
-
-          {/* Search and Filter Bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mb-6 sm:mb-8"
-          >
-            <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between">
-              <div className="flex-1 flex flex-col sm:flex-row gap-4">
-                {/* Search */}
-                <div className="relative flex-1">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search projects..."
-                    className="w-full pl-12 pr-4 py-3 rounded-xl bg-zinc-900/50 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all backdrop-blur-sm"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Sort & View Toggle */}
-                <div className="flex gap-2">
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="px-4 py-3 rounded-xl bg-zinc-900/50 border border-zinc-800 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 backdrop-blur-sm"
-                  >
-                    <option value="newest">Newest First</option>
-                    <option value="oldest">Oldest First</option>
-                    <option value="name-asc">Name (A-Z)</option>
-                    <option value="name-desc">Name (Z-A)</option>
-                  </select>
-
-                  <div className="flex rounded-xl bg-zinc-900/50 border border-zinc-800 p-1 backdrop-blur-sm">
-                    <button
-                      onClick={() => setViewMode("grid")}
-                      className={`p-2 rounded-lg transition-colors ${
-                        viewMode === "grid"
-                          ? "bg-emerald-500/20 text-emerald-400"
-                          : "text-zinc-400 hover:text-white"
-                      }`}
-                    >
-                      <Grid3x3 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setViewMode("list")}
-                      className={`p-2 rounded-lg transition-colors ${
-                        viewMode === "list"
-                          ? "bg-emerald-500/20 text-emerald-400"
-                          : "text-zinc-400 hover:text-white"
-                      }`}
-                    >
-                      <List className="w-4 h-4" />
-                    </button>
-                  </div>
+        {/* Stats Strip */}
+        {!loading && projects.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+            {[
+              { label: "Total Projects", value: stats.totalProjects, icon: Folder },
+              { label: "Total Files", value: stats.totalFiles, icon: FileCode },
+              { label: "Active Recently", value: stats.recentProjects, icon: Zap },
+              { label: "Frameworks used", value: "Next.js", icon: Code2 },
+            ].map((stat, i) => (
+              <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-between h-24">
+                <stat.icon className="w-5 h-5 text-zinc-500" />
+                <div>
+                  <div className="text-2xl font-bold">{stat.value}</div>
+                  <div className="text-xs text-zinc-500">{stat.label}</div>
                 </div>
               </div>
+            ))}
+          </div>
+        )}
 
-              {/* New Project Button */}
-              <Button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/30 whitespace-nowrap"
-                size="lg"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                <span className="hidden sm:inline">New Project</span>
-                <span className="sm:hidden">New</span>
-              </Button>
-            </div>
-          </motion.div>
-
-          {/* Error State */}
-          {error && !loading && (
-            <Card className="border-red-500/50 bg-red-500/10 mb-6">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <X className="w-5 h-5 text-red-400" />
-                  <div>
-                    <p className="font-medium text-red-400">{error}</p>
-                    <button
-                      onClick={fetchProjects}
-                      className="text-sm text-red-300 hover:text-red-200 mt-1 underline"
-                    >
-                      Try again
-                    </button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Projects Grid/List */}
-          {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-              {[1, 2, 3, 4].map((i) => (
-                <Card key={i} className="border-zinc-800 bg-zinc-900/50 animate-pulse">
-                  <CardHeader>
-                    <div className="h-6 bg-zinc-800 rounded w-3/4"></div>
-                    <div className="h-4 bg-zinc-800 rounded w-1/2 mt-2"></div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-4 bg-zinc-800 rounded w-2/3 mb-4"></div>
-                    <div className="h-10 bg-zinc-800 rounded"></div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          ) : filteredAndSortedProjects.length === 0 ? (
-            <Card className="border-zinc-800 bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 backdrop-blur-sm">
-              <CardContent className="p-12 sm:p-16 text-center">
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center">
-                    <Folder className="w-10 h-10 text-emerald-400" />
-                  </div>
-                  <h3 className="text-xl sm:text-2xl font-semibold mb-2">
-                    {searchQuery ? "No projects found" : "No projects yet"}
-                  </h3>
-                  <p className="text-sm sm:text-base text-zinc-400 mb-8 max-w-md mx-auto">
-                    {searchQuery
-                      ? "Try adjusting your search or filters to find what you're looking for."
-                      : "Get started by creating your first project. Build amazing applications with AI assistance."}
-                  </p>
-                  {!searchQuery && (
-                    <Button
-                      onClick={() => setShowCreateModal(true)}
-                      className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/30"
-                      size="lg"
-                    >
-                      <Plus className="w-5 h-5 mr-2" />
-                      Create Your First Project
-                    </Button>
-                  )}
-                </motion.div>
-              </CardContent>
-            </Card>
-          ) : (
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className={
-                viewMode === "grid"
-                  ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6"
-                  : "space-y-4"
-              }
+        {/* Search & Layout Controls */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-8 sticky top-20 z-30 py-4 bg-[#0A0A0A]/95 backdrop-blur-sm -mx-4 px-4 sm:mx-0 sm:px-0 sm:bg-transparent">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search projects..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+            />
+          </div>
+          <div className="flex gap-2">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="px-3 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm focus:outline-none"
             >
-              {filteredAndSortedProjects.map((project, index) => (
+              <option value="newest">Newest</option>
+              <option value="oldest">Oldest</option>
+              <option value="name-asc">Name (A-Z)</option>
+            </select>
+            <div className="flex bg-white/5 border border-white/10 rounded-xl p-1">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={cn("p-2 rounded-lg transition-all", viewMode === "grid" ? "bg-white/10 text-white" : "text-zinc-500")}
+              >
+                <Grid3x3 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={cn("p-2 rounded-lg transition-all", viewMode === "list" ? "bg-white/10 text-white" : "text-zinc-500")}
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Projects Grid */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-zinc-500" />
+          </div>
+        ) : filteredAndSortedProjects.length === 0 ? (
+          <div className="text-center py-20 border border-dashed border-white/10 rounded-3xl bg-white/5">
+            <div className="w-16 h-16 rounded-2xl bg-zinc-900 mx-auto flex items-center justify-center mb-4">
+              <Folder className="w-8 h-8 text-zinc-600" />
+            </div>
+            <h3 className="text-lg font-medium mb-2">No projects found</h3>
+            <p className="text-zinc-500 mb-6">Create your first project to get started.</p>
+            <Button onClick={() => setShowCreateModal(true)} className="rounded-full bg-white text-black hover:bg-zinc-200">
+              Create Project
+            </Button>
+          </div>
+        ) : (
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className={cn(
+              "grid gap-4 sm:gap-6",
+              viewMode === "grid"
+                ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 auto-rows-[280px]" // Fixed height rows for bento feel
+                : "grid-cols-1"
+            )}
+          >
+            {filteredAndSortedProjects.map((project, index) => {
+              // Bento Logic: First item is large hero if in grid mode and sorted by newest
+              const isHero = viewMode === "grid" && index === 0 && sortBy === "newest";
+              const gradientClass = getProjectGradient(project.id, project.name);
+
+              return (
                 <motion.div
                   key={project.id}
                   variants={itemVariants}
-                  custom={index}
+                  className={cn(
+                    "group relative overflow-hidden rounded-3xl border border-white/5 bg-[#111] transition-all hover:border-white/10 hover:shadow-2xl hover:shadow-black/50 cursor-pointer",
+                    isHero ? "md:col-span-2 md:row-span-1" : "col-span-1"
+                  )}
+                  onClick={() => handleOpenProject(project.id)}
                 >
-                  <Card className="border-zinc-800 bg-gradient-to-br from-zinc-900/80 to-zinc-900/40 backdrop-blur-sm hover:border-emerald-500/50 transition-all duration-300 group relative overflow-hidden">
-                    {/* Gradient overlay on hover */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/0 to-teal-500/0 group-hover:from-emerald-500/5 group-hover:to-teal-500/5 transition-all duration-300 pointer-events-none" />
+                  {/* Decorative Gradient Background */}
+                  <div className={cn(
+                    "absolute inset-0 bg-gradient-to-br opacity-5 group-hover:opacity-10 transition-opacity duration-500",
+                    gradientClass.split(" ")[0], gradientClass.split(" ")[1]
+                  )} />
 
-                    <CardHeader className="pb-3 relative z-10">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
-                            <Code2 className="w-6 h-6 text-emerald-400" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            {editingProject === project.id ? (
-                              <input
-                                type="text"
-                                value={editName}
-                                onChange={(e) => setEditName(e.target.value)}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    handleSaveEdit(project.id);
-                                  }
-                                  if (e.key === "Escape") {
-                                    setEditingProject(null);
-                                  }
-                                }}
-                                onClick={(e) => e.stopPropagation()}
-                                className="w-full px-2 py-1 rounded-lg bg-zinc-800 border border-emerald-500 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                                autoFocus
-                              />
-                            ) : (
-                              <>
-                                <CardTitle className="text-base sm:text-lg group-hover:text-emerald-400 transition-colors truncate mb-1">
-                                  {project.name}
-                                </CardTitle>
-                                <p className="text-xs text-zinc-500 capitalize flex items-center gap-1.5">
-                                  <Zap className="w-3 h-3" />
-                                  {project.framework}
-                                </p>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          {editingProject === project.id ? (
-                            <>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSaveEdit(project.id);
-                                }}
-                                className="p-1.5 rounded-lg hover:bg-emerald-500/20 text-emerald-400 transition-colors"
-                              >
-                                <Check className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingProject(null);
-                                }}
-                                className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleStartEdit(project);
-                                }}
-                                className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
-                                title="Rename project"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setShowDeleteConfirm(project.id);
-                                }}
-                                className="p-1.5 rounded-lg hover:bg-red-500/20 text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                                title="Delete project"
-                              >
-                                {deletingProject === project.id ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="w-4 h-4" />
-                                )}
-                              </button>
-                            </>
-                          )}
-                        </div>
+                  <div className="relative h-full flex flex-col p-6">
+                    {/* Top Row: Icon & Options */}
+                    <div className="flex justify-between items-start mb-auto">
+                      <div className={cn(
+                        "w-12 h-12 rounded-2xl flex items-center justify-center text-xl transition-transform group-hover:scale-110 duration-500",
+                        isHero ? "bg-white/10" : "bg-zinc-900",
+                        gradientClass.split(" ")[5] // text color
+                      )}>
+                        {isHero ? <Sparkles className="w-6 h-6" /> : <Code2 className="w-6 h-6" />}
                       </div>
-                    </CardHeader>
-                    <CardContent className="relative z-10">
-                      <div className="flex items-center justify-between text-xs sm:text-sm text-zinc-400 mb-4">
-                        <div className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                          <span>{formatDate(project.updatedAt)}</span>
-                        </div>
-                        {getFileCount(project) > 0 && (
-                          <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-xs font-medium">
-                            {getFileCount(project)} {getFileCount(project) === 1 ? "file" : "files"}
-                          </span>
-                        )}
+
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleStartEdit(project); }}
+                          className="p-2 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(project.id); }}
+                          className="p-2 rounded-full hover:bg-red-500/20 text-red-400"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenProject(project.id);
-                        }}
-                        className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg shadow-emerald-500/20 group/btn"
-                        size="sm"
-                      >
-                        <Play className="w-4 h-4 mr-2 group-hover/btn:translate-x-1 transition-transform" />
-                        Open in Builder
-                        <ArrowRight className="w-4 h-4 ml-2 opacity-0 group-hover/btn:opacity-100 group-hover/btn:translate-x-1 transition-all" />
-                      </Button>
-                    </CardContent>
-                  </Card>
+                    </div>
+
+                    {/* Middle: Title */}
+                    <div className="mb-4">
+                      {editingProject === project.id ? (
+                        <input
+                          autoFocus
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && handleSaveEdit(project.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="bg-transparent border-b border-emerald-500 text-xl font-bold focus:outline-none w-full"
+                        />
+                      ) : (
+                        <h3 className={cn("font-bold text-white mb-1 group-hover:text-emerald-400 transition-colors", isHero ? "text-2xl" : "text-xl")}>
+                          {project.name}
+                        </h3>
+                      )}
+                      <p className="text-zinc-500 text-sm flex items-center gap-2">
+                        {project.framework}
+                        <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                        {formatDate(project.updatedAt)}
+                      </p>
+                    </div>
+
+                    {/* Bottom: Metrics & Action */}
+                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-white/5">
+                      <div className="flex items-center gap-3 text-xs text-zinc-400">
+                        <span className="flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded-md">
+                          <FileCode className="w-3 h-3" />
+                          {getFileCount(project)}
+                        </span>
+                      </div>
+
+                      <div className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300",
+                        "bg-white text-black translate-x-4 opacity-0 group-hover:translate-x-0 group-hover:opacity-100"
+                      )}>
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </div>
                 </motion.div>
-              ))}
-            </motion.div>
-          )}
-        </div>
+              );
+            })}
+          </motion.div>
+        )}
       </main>
 
-      {/* Create Project Modal */}
-      <AnimatePresence>
-        {showCreateModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-            onClick={() => {
-              setShowCreateModal(false);
-              setProjectName("");
-            }}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Card className="w-full max-w-md border-zinc-800 bg-gradient-to-br from-zinc-900 to-zinc-950 backdrop-blur-xl shadow-2xl">
-                <CardHeader>
-                  <CardTitle className="text-2xl">Create New Project</CardTitle>
-                  <p className="text-sm text-zinc-400 mt-1">
-                    Start building your next amazing application
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-zinc-300">
-                      Project Name
-                    </label>
-                    <input
-                      type="text"
-                      value={projectName}
-                      onChange={(e) => setProjectName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleCreateProject();
-                        }
-                        if (e.key === "Escape") {
-                          setShowCreateModal(false);
-                          setProjectName("");
-                        }
-                      }}
-                      placeholder="My Awesome Project"
-                      className="w-full px-4 py-3 rounded-xl bg-zinc-900/50 border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
-                      autoFocus
-                    />
-                  </div>
-                  <div className="flex gap-3 justify-end pt-2">
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setShowCreateModal(false);
-                        setProjectName("");
-                      }}
-                      disabled={creating}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleCreateProject}
-                      disabled={!projectName.trim() || creating}
-                      className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white"
-                    >
-                      {creating ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="w-4 h-4 mr-2" />
-                          Create Project
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Logic Modals (Create, Delete) - Kept mostly same but restyled */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-[#111] border border-white/10 rounded-3xl p-6 shadow-2xl">
+            <h2 className="text-2xl font-bold mb-2">Create Project</h2>
+            <p className="text-zinc-400 mb-6">Start building something new.</p>
+            <input
+              autoFocus
+              placeholder="Project Name (e.g. Portfolio)"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreateProject()}
+              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:border-emerald-500 text-white"
+            />
+            <div className="flex justify-end gap-3">
+              <Button variant="ghost" onClick={() => setShowCreateModal(false)}>Cancel</Button>
+              <Button onClick={handleCreateProject} disabled={creating || !projectName} className="bg-emerald-500 text-black hover:bg-emerald-600 rounded-xl">
+                {creating ? <Loader2 className="animate-spin" /> : "Create Project"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* Delete Confirmation Modal */}
-      <AnimatePresence>
-        {showDeleteConfirm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-            onClick={() => setShowDeleteConfirm(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Card className="w-full max-w-md border-red-500/50 bg-gradient-to-br from-zinc-900 to-zinc-950 backdrop-blur-xl shadow-2xl">
-                <CardHeader>
-                  <CardTitle className="text-2xl text-red-400">Delete Project</CardTitle>
-                  <p className="text-sm text-zinc-400 mt-1">
-                    This action cannot be undone
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-zinc-300">
-                    Are you sure you want to delete this project? All files and data will be permanently removed.
-                  </p>
-                  <div className="flex gap-3 justify-end pt-2">
-                    <Button
-                      variant="ghost"
-                      onClick={() => setShowDeleteConfirm(null)}
-                      disabled={deletingProject !== null}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={() => handleDelete(showDeleteConfirm)}
-                      disabled={deletingProject !== null}
-                      className="bg-red-500 hover:bg-red-600 text-white"
-                    >
-                      {deletingProject ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Deleting...
-                        </>
-                      ) : (
-                        <>
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-[#111] border border-red-500/20 rounded-3xl p-6 shadow-2xl">
+            <h2 className="text-xl font-bold mb-2 text-red-500">Delete Project?</h2>
+            <p className="text-zinc-400 mb-6 text-sm">This action cannot be undone. All files will be lost forever.</p>
+            <div className="flex justify-end gap-3">
+              <Button variant="ghost" onClick={() => setShowDeleteConfirm(null)}>Cancel</Button>
+              <Button
+                onClick={() => showDeleteConfirm && handleDelete(showDeleteConfirm)}
+                className="bg-red-500/10 text-red-500 hover:bg-red-500/20 border border-red-500/20 rounded-xl"
+                disabled={deletingProject !== null}
+              >
+                {deletingProject ? <Loader2 className="animate-spin" /> : "Delete Forever"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
